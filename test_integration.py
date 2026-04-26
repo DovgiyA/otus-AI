@@ -1,0 +1,289 @@
+#!/usr/bin/env python
+"""
+Integration test script for Mini-Survey Application.
+Tests both backend API endpoints and database functionality.
+"""
+
+import requests
+import json
+import time
+import sqlite3
+from pathlib import Path
+
+# Configuration
+BACKEND_URL = "http://localhost:8000"
+API_BASE = f"{BACKEND_URL}/api"
+# Database path - handle both running from root or backend directory
+root_db = Path(__file__).parent / "backend" / "survey.db"
+backend_db = Path("survey.db")
+DB_PATH = root_db if root_db.exists() or not backend_db.exists() else backend_db
+
+# ANSI color codes
+GREEN = '\033[92m'
+RED = '\033[91m'
+YELLOW = '\033[93m'
+BLUE = '\033[94m'
+RESET = '\033[0m'
+
+def print_section(title):
+    """Print section header"""
+    print(f"\n{BLUE}{'='*60}{RESET}")
+    print(f"{BLUE}{title}{RESET}")
+    print(f"{BLUE}{'='*60}{RESET}\n")
+
+def print_pass(message):
+    """Print success message"""
+    print(f"{GREEN}✓ {message}{RESET}")
+
+def print_fail(message):
+    """Print failure message"""
+    print(f"{RED}✗ {message}{RESET}")
+
+def print_info(message):
+    """Print info message"""
+    print(f"{YELLOW}ℹ {message}{RESET}")
+
+def test_backend_running():
+    """Test if backend is running"""
+    print_section("Test 1: Backend Health Check")
+    try:
+        response = requests.get(f"{BACKEND_URL}/", timeout=2)
+        if response.status_code == 200:
+            print_pass("Backend is running on port 8000")
+            print(f"  Response: {response.json()}")
+            return True
+        else:
+            print_fail(f"Backend returned status {response.status_code}")
+            return False
+    except requests.exceptions.ConnectionError:
+        print_fail("Cannot connect to backend on http://localhost:8000")
+        print_info("Make sure backend is running: cd backend && python main.py")
+        return False
+    except Exception as e:
+        print_fail(f"Error: {e}")
+        return False
+
+def test_get_questions():
+    """Test GET /api/questions endpoint"""
+    print_section("Test 2: GET /api/questions")
+    try:
+        response = requests.get(f"{API_BASE}/questions", timeout=5)
+        
+        if response.status_code != 200:
+            print_fail(f"API returned status {response.status_code}")
+            return False
+        
+        questions = response.json()
+        
+        if not isinstance(questions, list):
+            print_fail("Questions response is not a list")
+            return False
+        
+        if len(questions) == 0:
+            print_fail("No questions returned")
+            return False
+        
+        print_pass(f"Loaded {len(questions)} questions")
+        
+        # Print question details
+        for q in questions[:3]:
+            print(f"  Q{q['id']}: {q['text'][:50]}... [{q['type']}]")
+        
+        if len(questions) > 3:
+            print(f"  ... and {len(questions) - 3} more")
+        
+        return True
+    
+    except Exception as e:
+        print_fail(f"Error: {e}")
+        return False
+
+def test_submit_answers(questions):
+    """Test POST /api/answers endpoint"""
+    print_section("Test 3: POST /api/answers")
+    
+    # Prepare test answers
+    answers = [
+        {"question_id": 1, "answer_value": "Test User"},
+        {"question_id": 2, "answer_value": "Developer"},
+        {"question_id": 3, "answer_value": "5+ лет"},
+        {"question_id": 4, "answer_value": "Python, JavaScript"},
+        {"question_id": 5, "answer_value": "Backend"},
+    ]
+    
+    try:
+        payload = {"answers": answers}
+        response = requests.post(
+            f"{API_BASE}/answers",
+            json=payload,
+            timeout=5,
+            headers={"Content-Type": "application/json"}
+        )
+        
+        if response.status_code != 200:
+            print_fail(f"API returned status {response.status_code}")
+            print(f"  Response: {response.text}")
+            return False
+        
+        result = response.json()
+        
+        if not result.get("success"):
+            print_fail("Response indicates failure")
+            print(f"  Response: {result}")
+            return False
+        
+        print_pass(f"Successfully submitted {len(answers)} answers")
+        print(f"  Message: {result['message']}")
+        
+        return True
+    
+    except Exception as e:
+        print_fail(f"Error: {e}")
+        return False
+
+def test_database():
+    """Test database has data"""
+    print_section("Test 4: Database Verification")
+    
+    if not DB_PATH.exists():
+        print_fail(f"Database file not found at {DB_PATH}")
+        return False
+    
+    try:
+        conn = sqlite3.connect(str(DB_PATH))
+        cursor = conn.cursor()
+        
+        # Check questions table
+        cursor.execute("SELECT COUNT(*) FROM questions")
+        q_count = cursor.fetchone()[0]
+        
+        if q_count == 0:
+            print_fail("No questions in database")
+            conn.close()
+            return False
+        
+        print_pass(f"Database has {q_count} questions")
+        
+        # Check answers table
+        cursor.execute("SELECT COUNT(*) FROM answers")
+        a_count = cursor.fetchone()[0]
+        
+        print_pass(f"Database has {a_count} answers")
+        
+        if a_count > 0:
+            # Show recent answers
+            cursor.execute("""
+                SELECT a.answer_value, q.text
+                FROM answers a
+                JOIN questions q ON a.question_id = q.id
+                ORDER BY a.created_at DESC
+                LIMIT 3
+            """)
+            
+            recent = cursor.fetchall()
+            print_info("Recent answers:")
+            for answer, question in recent:
+                print(f"  - {question[:40]}... → {answer[:40]}...")
+        
+        conn.close()
+        return True
+    
+    except Exception as e:
+        print_fail(f"Database error: {e}")
+        return False
+
+def test_cors():
+    """Test CORS headers"""
+    print_section("Test 5: CORS Configuration")
+    
+    try:
+        response = requests.options(
+            f"{API_BASE}/questions",
+            headers={"Origin": "http://localhost:3000"},
+            timeout=5
+        )
+        
+        cors_origin = response.headers.get("Access-Control-Allow-Origin", "Not set")
+        cors_methods = response.headers.get("Access-Control-Allow-Methods", "Not set")
+        
+        print_pass(f"CORS Origin: {cors_origin}")
+        print_pass(f"CORS Methods: {cors_methods}")
+        
+        if "http://localhost:3000" in cors_origin or "*" in cors_origin:
+            print_pass("CORS configured for frontend")
+            return True
+        else:
+            print_fail("CORS may not be configured for localhost:3000")
+            return False
+    
+    except Exception as e:
+        print_fail(f"CORS check error: {e}")
+        return False
+
+def main():
+    """Run all tests"""
+    print(f"\n{BLUE}Mini-Survey Application - Integration Tests{RESET}")
+    print(f"{BLUE}{'='*60}{RESET}")
+    
+    # Run tests
+    results = []
+    
+    # Test 1: Backend running
+    if not test_backend_running():
+        print_fail("Backend is not running. Cannot continue tests.")
+        return
+    
+    results.append(("Backend Health Check", True))
+    
+    # Test 2: Get questions
+    if test_get_questions():
+        results.append(("GET /api/questions", True))
+    else:
+        results.append(("GET /api/questions", False))
+    
+    time.sleep(0.5)
+    
+    # Test 3: Submit answers
+    if test_submit_answers(None):
+        results.append(("POST /api/answers", True))
+    else:
+        results.append(("POST /api/answers", False))
+    
+    time.sleep(0.5)
+    
+    # Test 4: Database
+    if test_database():
+        results.append(("Database Verification", True))
+    else:
+        results.append(("Database Verification", False))
+    
+    # Test 5: CORS
+    if test_cors():
+        results.append(("CORS Configuration", True))
+    else:
+        results.append(("CORS Configuration", False))
+    
+    # Summary
+    print_section("Test Summary")
+    
+    passed = sum(1 for _, success in results if success)
+    total = len(results)
+    
+    for name, success in results:
+        status = f"{GREEN}PASS{RESET}" if success else f"{RED}FAIL{RESET}"
+        print(f"  {status} - {name}")
+    
+    print()
+    if passed == total:
+        print(f"{GREEN}{'='*60}{RESET}")
+        print(f"{GREEN}✓ All {total} tests passed!{RESET}")
+        print(f"{GREEN}Application is ready.{RESET}")
+        print(f"{GREEN}{'='*60}{RESET}")
+    else:
+        print(f"{RED}{'='*60}{RESET}")
+        print(f"{RED}✗ {total - passed}/{total} tests failed.{RESET}")
+        print(f"{RED}Please check errors above and restart.{RESET}")
+        print(f"{RED}{'='*60}{RESET}")
+
+if __name__ == "__main__":
+    main()
