@@ -4,9 +4,9 @@ This guide will get you running the application in 5 minutes.
 
 ## Prerequisites
 
-- Python 3.8+ (`python --version`)
-- Node.js 14+ (`node --version`)
-- npm or yarn (`npm --version`)
+- Python 3.12+ (`python --version`)
+- Node.js 18+ (`node --version`)
+- npm 9+ or yarn (`npm --version`)
 
 ## 🚀 Quick Start (Two Terminals)
 

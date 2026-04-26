@@ -43,9 +43,9 @@ This is a full-stack web application demonstrating modern development practices:
 - **Build Tools**: Create React App (react-scripts 5.0.1)
 
 ### Tools
-- **Python**: 3.8+
-- **Node.js**: 14+
-- **Package Manager**: npm or yarn
+- **Python**: 3.12+
+- **Node.js**: 18+ (LTS)
+- **Package Manager**: npm 9+ or yarn 4+
 
 ---
 
@@ -54,8 +54,8 @@ This is a full-stack web application demonstrating modern development practices:
 ### Prerequisites
 
 Ensure you have installed:
-- Python 3.8 or higher
-- Node.js 14+ and npm
+- Python 3.12 or higher
+- Node.js 18+ (LTS) and npm 9+
 - Git
 
 ### Step 1: Clone Repository
@@ -562,8 +562,8 @@ SELECT * FROM answers;
 
 ## 📋 Checklist - Running Locally
 
-- [ ] Python 3.8+ installed (`python --version`)
-- [ ] Node.js 14+ installed (`node --version`)
+- [ ] Python 3.12+ installed (`python --version`)
+- [ ] Node.js 18+ installed (`node --version`)
 - [ ] Dependencies installed
   - Backend: `pip install -r requirements.txt`
   - Frontend: `npm install`
