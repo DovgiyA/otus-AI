@@ -2,7 +2,7 @@
 
 ## ✅ Мини-анкета (Mini-Survey Application) - COMPLETE
 
-Full-stack survey application successfully created with all requirements met.
+Full-stack survey application successfully created with all requirements met + bonus feature: **Survey Results Tracking System**.
 
 ---
 
@@ -18,6 +18,36 @@ Full-stack survey application successfully created with all requirements met.
 ✅ **Requirement 5**: Application runs locally without Docker  
 ✅ **Requirement 6**: Comprehensive README.md with setup instructions  
 ✅ **Requirement 7**: All prompts documented in prompts.md  
+
+---
+
+## 🎉 BONUS FEATURE: Survey Results Tracking System
+
+### 📊 New Backend APIs (4 endpoints)
+✅ `POST /api/submissions` - Create submission with participant name, email, and answers  
+✅ `GET /api/submissions` - List all submissions with search and sort  
+✅ `GET /api/submissions/{id}` - Get full details of one submission with all answers  
+✅ `DELETE /api/submissions/{id}` - Delete submission from database  
+
+### 💻 New Frontend Features
+✅ Enhanced survey form with name and email fields  
+✅ New "Результаты" (Results) page with:
+   - Table of all participants
+   - Search by name or email
+   - Sort by date (newest/oldest)
+   - View detailed answers for each participant
+   - Delete results with confirmation
+✅ Navigation between "Анкета" (Survey) and "Результаты" (Results)  
+✅ Responsive design for mobile/tablet/desktop  
+
+### 🗄️ Database Enhancements
+✅ New `Submission` model to group answers by participant  
+✅ Participant tracking: name, email, submission timestamp  
+✅ Full referential integrity and cascading deletes  
+
+### 🧪 Extended Test Suite
+✅ All 9 integration tests passing (was 5, now 9)
+✅ 4 new tests for submission endpoints
 
 ---
 
@@ -45,7 +75,41 @@ Expected: Browser opens to http://localhost:3000
 cd /workspaces/otus-AI
 python test_integration.py
 ```
-Expected: All 5 tests pass ✓
+Expected: All 9 tests pass ✓
+
+---
+
+## 📝 Documentation
+
+- **README.md** - Original project setup and overview
+- **SURVEY_RESULTS_GUIDE.md** - Detailed guide for survey results tracking (NEW)
+- **prompts.md** - All development prompts used
+- **QUICKSTART.md** - Quick reference
+
+---
+
+## 🎯 Test Results
+
+```
+============================================================
+Test Summary
+============================================================
+
+  PASS - Backend Health Check
+  PASS - GET /api/questions
+  PASS - POST /api/answers (legacy)
+  PASS - Database Verification
+  PASS - CORS Configuration
+  PASS - POST /api/submissions (NEW)
+  PASS - GET /api/submissions (NEW)
+  PASS - GET /api/submissions/{id} (NEW)
+  PASS - DELETE /api/submissions/{id} (NEW)
+
+============================================================
+✓ All 9 tests passed!
+Application is ready.
+============================================================
+```
 
 ---
 

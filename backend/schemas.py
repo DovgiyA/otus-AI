@@ -25,7 +25,7 @@ class AnswerSubmit(BaseModel):
 
 
 class AnswersRequest(BaseModel):
-    """Request schema for submitting multiple answers."""
+    """Request schema for submitting multiple answers (legacy)."""
     answers: List[AnswerSubmit]
 
 
@@ -45,3 +45,49 @@ class SuccessResponse(BaseModel):
     success: bool
     message: str
     data: Optional[dict] = None
+
+
+# New schemas for Submission
+
+class SubmissionAnswerSubmit(BaseModel):
+    """Schema for a single answer in submission."""
+    question_id: int
+    answer_value: str
+
+
+class SubmissionCreateRequest(BaseModel):
+    """Request schema for creating a new submission with answers."""
+    participant_name: str
+    participant_email: str
+    answers: List[SubmissionAnswerSubmit]
+
+
+class SubmissionListItem(BaseModel):
+    """Response schema for submission in list view."""
+    id: int
+    participant_name: str
+    participant_email: str
+    submitted_at: datetime
+    answer_count: int
+    
+    class Config:
+        from_attributes = True
+
+
+class SubmissionDetailAnswer(BaseModel):
+    """Answer details in submission detail view."""
+    question_id: int
+    question_text: str
+    answer_value: str
+
+
+class SubmissionDetailResponse(BaseModel):
+    """Response schema for detailed submission view."""
+    id: int
+    participant_name: str
+    participant_email: str
+    submitted_at: datetime
+    answers: List[SubmissionDetailAnswer]
+    
+    class Config:
+        from_attributes = True

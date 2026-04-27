@@ -1,0 +1,144 @@
+# Architecture Diagram Template
+
+## System Components
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        CLIENT (Browser)                         │
+│                                                                 │
+│  ┌───────────────────────────────────────────────────────────┐ │
+│  │            React Application (Port 3000)                 │ │
+│  │                                                          │ │
+│  │  ┌─────────────────────────────────────────────────┐  │ │
+│  │  │        App.jsx (Root Component)                │  │ │
+│  │  └──────────────────┬──────────────────────────────┘  │ │
+│  │                     │                                  │ │
+│  │  ┌──────────────────▼──────────────────────────────┐  │ │
+│  │  │      SurveyForm.jsx (observer)                 │  │ │
+│  │  │  • Uses MobX store                             │  │ │
+│  │  │  • Renders QuestionField for each question     │  │ │
+│  │  │  • Handles form submission                     │  │ │
+│  │  └──────────────────┬──────────────────────────────┘  │ │
+│  │                     │                                  │ │
+│  │  ┌──────────────────▼──────────────────────────────┐  │ │
+│  │  │    QuestionField.jsx (x5 instances)            │  │ │
+│  │  │  • Conditional: text input OR radio buttons    │  │ │
+│  │  │  • Calls SurveyStore.setAnswer()               │  │ │
+│  │  └──────────────────┬──────────────────────────────┘  │ │
+│  │                     │                                  │ │
+│  │                     ▼                                  │ │
+│  │  ┌─────────────────────────────────────────────────┐  │ │
+│  │  │     MobX SurveyStore                           │  │ │
+│  │  │  Observable:                                   │  │ │
+│  │  │  • questions: Question[]                       │  │ │
+│  │  │  • answers: {questionId: value}                │  │ │
+│  │  │  • isLoading: boolean                          │  │ │
+│  │  │  • isSubmitted: boolean                        │  │ │
+│  │  │                                                │  │ │
+│  │  │  Actions:                                      │  │ │
+│  │  │  • fetchQuestions()  ─┐                        │  │ │
+│  │  │  • setAnswer()       │                         │  │ │
+│  │  │  • submitAnswers()   ├─→ surveyApi.js         │  │ │
+│  │  │  • reset()          │  (Axios client)         │  │ │
+│  │  └─────────────────────┬──────────────────────────┘  │ │
+│  │                        │                              │ │
+│  └────────────────────────┼──────────────────────────────┘ │
+│                           │                                │
+└───────────────────────────┼────────────────────────────────┘
+                    HTTP API calls
+                 GET /api/questions
+                 POST /api/answers
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    SERVER (Port 8000)                           │
+│                                                                 │
+│  ┌───────────────────────────────────────────────────────────┐ │
+│  │          FastAPI Application (main.py)                   │ │
+│  │                                                          │ │
+│  │  ┌──────────────────────────────────────────────────┐   │ │
+│  │  │  GET /api/questions                            │   │ │
+│  │  │  └──► routers/survey.py::get_questions()       │   │ │
+│  │  │       └─► Seed if empty + return from DB       │   │ │
+│  │  └──────────────┬───────────────────────────────────┘   │ │
+│  │                 │                                        │ │
+│  │  ┌──────────────▼───────────────────────────────────┐   │ │
+│  │  │  POST /api/answers                             │   │ │
+│  │  │  └──► routers/survey.py::submit_answers()      │   │ │
+│  │  │       └─► Validate + Insert into DB            │   │ │
+│  │  └──────────────┬───────────────────────────────────┘   │ │
+│  │                 │                                        │ │
+│  └─────────────────┼────────────────────────────────────────┘ │
+│                    │                                          │
+│  ┌─────────────────▼────────────────────────────────────────┐ │
+│  │           SQLAlchemy ORM Layer                          │ │
+│  │                                                          │ │
+│  │  models.py:                                             │ │
+│  │  • Question: id, text, type, options, order             │ │
+│  │  • Answer: id, question_id (FK), answer_value, timestamp│ │
+│  └─────────────────┬────────────────────────────────────────┘ │
+│                    │                                          │
+│  ┌─────────────────▼────────────────────────────────────────┐ │
+│  │        Database (SQLite or PostgreSQL)                  │ │
+│  │                                                          │ │
+│  │  ┌──────────────────┐  ┌──────────────────┐            │ │
+│  │  │   questions      │  │     answers      │            │ │
+│  │  ├──────────────────┤  ├──────────────────┤            │ │
+│  │  │ id (PK)          │  │ id (PK)          │            │ │
+│  │  │ text             │  │ question_id (FK) │            │ │
+│  │  │ type             │  │ answer_value     │            │ │
+│  │  │ options (JSON)   │  │ created_at       │            │ │
+│  │  │ order            │  └──────────────────┘            │ │
+│  │  └──────────────────┘                                  │ │
+│  │                                                          │ │
+│  │  Data Flow:                                             │ │
+│  │  1. App startup: Check if questions exist              │ │
+│  │  2. If empty: Seed 5 hardcoded questions              │ │
+│  │  3. Users fill form in React                          │ │
+│  │  4. Submit → POST /api/answers                        │ │
+│  │  5. Backend validates + saves to DB                   │ │
+│  │  6. React shows success message                       │ │
+│  │  7. Data persisted in answers table                   │ │
+│  │                                                          │ │
+│  └──────────────────────────────────────────────────────────┘ │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+## Data Flow Sequence
+
+```
+User        Browser          React App           Backend API       Database
+  │            │               │                    │                 │
+  ├─ Visit localhost:3000 ──────────────────────────────────────────┐ │
+  │            │               │                    │                │ │
+  │            │ Load HTML ◄──────────────────────────────────────┐ │ │
+  │            ├────────────────────────────────────────────────┐ │ │ │
+  │            │ Render React  │                    │           │ │ │ │
+  │            │               │                    │          │ │ │
+  │            │ useEffect → fetchQuestions() ──────────────► GET /questions
+  │            │               │                    │              │
+  │            │ ◄──── Response (5 questions) ◄─────────────────── SELECT from questions
+  │            │               │                    │              │
+  │            │ Store in MobX │                    │              │
+  │            │               │                    │              │
+  │ Fill form │               │                    │              │
+  ├───────────►│ onChange ────────► SurveyStore.setAnswer() ───┐  │
+  │            │               │                    │           │  │
+  │ Click      │ onSubmit ─────────► validateAnswers() ──────┐  │  │
+  │ Submit     │               │                    │         │  │  │
+  │            │               │                    │         │  │  │
+  │            │ POST /api/answers ────────────────►│        │  │  │
+  │            │               │                    │         │  │  │
+  │            │               │ ◄──── Success response ◄─────┼──┼─ INSERT INTO answers
+  │            │               │                    │         │  │  │
+  │            │ Show "Thank you!" message          │         │  │  │
+  │            │               │                    │         │  │  │
+  └────────────────────────────────────────────────────────────┘  │  │
+
+Time flows downward ↓
+```
+
+---
+
+**For your survey app**: This shows how React components interact with MobX store, which calls the Axios API client, which communicates with FastAPI backend, which queries the SQLite database.

@@ -1,8 +1,10 @@
 import { makeAutoObservable } from 'mobx';
-import { getQuestions, postAnswers } from '../api/surveyApi';
+import { getQuestions, createSubmission } from '../api/surveyApi';
 
 class SurveyStore {
   questions = [];
+  participantName = '';
+  participantEmail = '';
   answers = {};
   isLoading = false;
   isSubmitted = false;
@@ -36,10 +38,39 @@ class SurveyStore {
   }
 
   /**
+   * Update participant name
+   */
+  setParticipantName(name) {
+    this.participantName = name;
+  }
+
+  /**
+   * Update participant email
+   */
+  setParticipantEmail(email) {
+    this.participantEmail = email;
+  }
+
+  /**
    * Update answer for a specific question
    */
   setAnswer(questionId, value) {
     this.answers[questionId] = value;
+  }
+
+  /**
+   * Reset form to initial state
+   */
+  reset() {
+    this.participantName = '';
+    this.participantEmail = '';
+    this.answers = {};
+    this.isSubmitted = false;
+    this.submissionMessage = '';
+    this.error = null;
+    this.questions.forEach((q) => {
+      this.answers[q.id] = '';
+    });
   }
 
   /**
@@ -50,10 +81,33 @@ class SurveyStore {
     this.error = null;
     
     try {
+      // Validate participant name
+      if (!this.participantName.trim()) {
+        this.error = 'Please enter your name';
+        this.isLoading = false;
+        return;
+      }
+
+      // Validate participant email
+      if (!this.participantEmail.trim()) {
+        this.error = 'Please enter your email';
+        this.isLoading = false;
+        return;
+      }
+
+      // Simple email validation
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(this.participantEmail)) {
+        this.error = 'Please enter a valid email address';
+        this.isLoading = false;
+        return;
+      }
+
       // Validate that all questions have answers
       const allAnswered = this.questions.every((q) => this.answers[q.id]?.trim() !== '');
       if (!allAnswered) {
         this.error = 'Please answer all questions';
+        this.isLoading = false;
         return;
       }
 
@@ -64,32 +118,23 @@ class SurveyStore {
       }));
 
       // Post to backend
-      const response = await postAnswers({ answers: answersArray });
+      const response = await createSubmission({
+        participant_name: this.participantName.trim(),
+        participant_email: this.participantEmail.trim(),
+        answers: answersArray
+      });
       
       if (response.success) {
         this.isSubmitted = true;
         this.submissionMessage = response.message;
-        console.log('Answers submitted successfully!');
+        console.log('Submission created successfully!', response);
       }
     } catch (err) {
-      this.error = err.message || 'Failed to submit answers';
-      console.error('Error submitting answers:', err);
+      this.error = err.message || 'Failed to submit survey';
+      console.error('Error submitting survey:', err);
     } finally {
       this.isLoading = false;
     }
-  }
-
-  /**
-   * Reset the form to initial state
-   */
-  reset() {
-    this.answers = {};
-    this.isSubmitted = false;
-    this.submissionMessage = '';
-    this.error = null;
-    this.questions.forEach((q) => {
-      this.answers[q.id] = '';
-    });
   }
 }
 

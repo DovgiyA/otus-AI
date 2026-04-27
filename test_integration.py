@@ -141,6 +141,154 @@ def test_submit_answers(questions):
         print_fail(f"Error: {e}")
         return False
 
+
+def test_create_submission():
+    """Test POST /api/submissions endpoint (new)"""
+    print_section("Test 6: POST /api/submissions (NEW)")
+    
+    # Prepare test submission
+    submission = {
+        "participant_name": "Ivan Petrov",
+        "participant_email": "ivan@example.com",
+        "answers": [
+            {"question_id": 1, "answer_value": "Ivan Petrov"},
+            {"question_id": 2, "answer_value": "Developer"},
+            {"question_id": 3, "answer_value": "3-5 лет"},
+            {"question_id": 4, "answer_value": "Python, Go, JavaScript"},
+            {"question_id": 5, "answer_value": "Full-Stack"},
+        ]
+    }
+    
+    try:
+        response = requests.post(
+            f"{API_BASE}/submissions",
+            json=submission,
+            timeout=5,
+            headers={"Content-Type": "application/json"}
+        )
+        
+        if response.status_code != 200:
+            print_fail(f"API returned status {response.status_code}")
+            print(f"  Response: {response.text}")
+            return None
+        
+        result = response.json()
+        
+        if not result.get("success"):
+            print_fail("Response indicates failure")
+            print(f"  Response: {result}")
+            return None
+        
+        submission_id = result.get("data", {}).get("submission_id")
+        print_pass(f"Successfully created submission ID: {submission_id}")
+        print(f"  Message: {result['message']}")
+        
+        return submission_id
+    
+    except Exception as e:
+        print_fail(f"Error: {e}")
+        return None
+
+
+def test_list_submissions():
+    """Test GET /api/submissions endpoint (new)"""
+    print_section("Test 7: GET /api/submissions (NEW)")
+    
+    try:
+        response = requests.get(
+            f"{API_BASE}/submissions",
+            timeout=5,
+            headers={"Content-Type": "application/json"}
+        )
+        
+        if response.status_code != 200:
+            print_fail(f"API returned status {response.status_code}")
+            return []
+        
+        submissions = response.json()
+        
+        if not isinstance(submissions, list):
+            print_fail("Submissions response is not a list")
+            return []
+        
+        print_pass(f"Loaded {len(submissions)} submissions")
+        
+        if len(submissions) > 0:
+            print_info("Recent submissions:")
+            for sub in submissions[:3]:
+                print(f"  - {sub['participant_name']} ({sub['participant_email']}) - {sub['answer_count']} ответов")
+        
+        return submissions
+    
+    except Exception as e:
+        print_fail(f"Error: {e}")
+        return []
+
+
+def test_get_submission_detail(submission_id):
+    """Test GET /api/submissions/{id} endpoint (new)"""
+    print_section("Test 8: GET /api/submissions/{id} (NEW)")
+    
+    try:
+        response = requests.get(
+            f"{API_BASE}/submissions/{submission_id}",
+            timeout=5,
+            headers={"Content-Type": "application/json"}
+        )
+        
+        if response.status_code != 200:
+            print_fail(f"API returned status {response.status_code}")
+            return False
+        
+        submission = response.json()
+        
+        print_pass(f"Loaded submission details for {submission['participant_name']}")
+        print(f"  Email: {submission['participant_email']}")
+        print(f"  Answers: {len(submission['answers'])}")
+        
+        if len(submission['answers']) > 0:
+            print_info("First answer:")
+            first_ans = submission['answers'][0]
+            print(f"  Q: {first_ans['question_text'][:50]}...")
+            print(f"  A: {first_ans['answer_value'][:50]}...")
+        
+        return True
+    
+    except Exception as e:
+        print_fail(f"Error: {e}")
+        return False
+
+
+def test_delete_submission(submission_id):
+    """Test DELETE /api/submissions/{id} endpoint (new)"""
+    print_section("Test 9: DELETE /api/submissions/{id} (NEW)")
+    
+    try:
+        response = requests.delete(
+            f"{API_BASE}/submissions/{submission_id}",
+            timeout=5,
+            headers={"Content-Type": "application/json"}
+        )
+        
+        if response.status_code != 200:
+            print_fail(f"API returned status {response.status_code}")
+            return False
+        
+        result = response.json()
+        
+        if not result.get("success"):
+            print_fail("Response indicates failure")
+            return False
+        
+        print_pass(f"Successfully deleted submission {submission_id}")
+        print(f"  Message: {result['message']}")
+        
+        return True
+    
+    except Exception as e:
+        print_fail(f"Error: {e}")
+        return False
+
 def test_database():
     """Test database has data"""
     print_section("Test 4: Database Verification")
@@ -243,11 +391,11 @@ def main():
     
     time.sleep(0.5)
     
-    # Test 3: Submit answers
+    # Test 3: Submit answers (legacy endpoint)
     if test_submit_answers(None):
-        results.append(("POST /api/answers", True))
+        results.append(("POST /api/answers (legacy)", True))
     else:
-        results.append(("POST /api/answers", False))
+        results.append(("POST /api/answers (legacy)", False))
     
     time.sleep(0.5)
     
@@ -262,6 +410,40 @@ def main():
         results.append(("CORS Configuration", True))
     else:
         results.append(("CORS Configuration", False))
+    
+    time.sleep(0.5)
+    
+    # Test 6: Create submission (NEW)
+    submission_id = test_create_submission()
+    if submission_id:
+        results.append(("POST /api/submissions (NEW)", True))
+    else:
+        results.append(("POST /api/submissions (NEW)", False))
+    
+    time.sleep(0.5)
+    
+    # Test 7: List submissions (NEW)
+    submissions = test_list_submissions()
+    if len(submissions) > 0:
+        results.append(("GET /api/submissions (NEW)", True))
+    else:
+        results.append(("GET /api/submissions (NEW)", False))
+    
+    time.sleep(0.5)
+    
+    # Test 8: Get submission detail (NEW)
+    if submission_id and test_get_submission_detail(submission_id):
+        results.append(("GET /api/submissions/{id} (NEW)", True))
+    elif not submission_id:
+        results.append(("GET /api/submissions/{id} (NEW)", False))
+    
+    time.sleep(0.5)
+    
+    # Test 9: Delete submission (NEW)
+    if submission_id and test_delete_submission(submission_id):
+        results.append(("DELETE /api/submissions/{id} (NEW)", True))
+    elif not submission_id:
+        results.append(("DELETE /api/submissions/{id} (NEW)", False))
     
     # Summary
     print_section("Test Summary")

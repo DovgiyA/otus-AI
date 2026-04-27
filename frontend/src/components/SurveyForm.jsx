@@ -6,7 +6,7 @@ import '../styles/App.css';
 
 /**
  * Main survey form component.
- * Displays questions, handles user input, and submits answers.
+ * Displays participant info fields, questions, handles user input, and submits answers.
  * Wrapped with observer() to react to MobX state changes.
  */
 const SurveyForm = observer(() => {
@@ -14,6 +14,14 @@ const SurveyForm = observer(() => {
     // Load questions on component mount
     SurveyStore.fetchQuestions();
   }, []);
+
+  const handleNameChange = (e) => {
+    SurveyStore.setParticipantName(e.target.value);
+  };
+
+  const handleEmailChange = (e) => {
+    SurveyStore.setParticipantEmail(e.target.value);
+  };
 
   const handleAnswerChange = (questionId, value) => {
     SurveyStore.setAnswer(questionId, value);
@@ -44,6 +52,7 @@ const SurveyForm = observer(() => {
         <div className="success-message">
           <h2>🎉 Спасибо!</h2>
           <p>{SurveyStore.submissionMessage}</p>
+          <p>Бланк {SurveyStore.participantName} ({SurveyStore.participantEmail}) был успешно записан.</p>
           <button className="btn btn-primary" onClick={handleReset}>
             Заполнить анкету снова
           </button>
@@ -65,14 +74,53 @@ const SurveyForm = observer(() => {
       )}
 
       <form onSubmit={handleSubmit} className="survey-form">
-        {SurveyStore.questions.map((question) => (
-          <QuestionField
-            key={question.id}
-            question={question}
-            value={SurveyStore.answers[question.id] || ''}
-            onChange={handleAnswerChange}
-          />
-        ))}
+        {/* Participant Information Section */}
+        <div className="form-section participant-info">
+          <h3>Ваши данные</h3>
+          
+          <div className="form-group">
+            <label htmlFor="name">
+              Ваше имя <span className="required">*</span>
+            </label>
+            <input
+              id="name"
+              type="text"
+              placeholder="Введите ваше имя"
+              value={SurveyStore.participantName}
+              onChange={handleNameChange}
+              disabled={SurveyStore.isLoading}
+              required
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="email">
+              Ваш email <span className="required">*</span>
+            </label>
+            <input
+              id="email"
+              type="email"
+              placeholder="Введите ваш email"
+              value={SurveyStore.participantEmail}
+              onChange={handleEmailChange}
+              disabled={SurveyStore.isLoading}
+              required
+            />
+          </div>
+        </div>
+
+        {/* Survey Questions Section */}
+        <div className="form-section questions">
+          <h3>Вопросы опроса</h3>
+          {SurveyStore.questions.map((question) => (
+            <QuestionField
+              key={question.id}
+              question={question}
+              value={SurveyStore.answers[question.id] || ''}
+              onChange={handleAnswerChange}
+            />
+          ))}
+        </div>
 
         <div className="form-actions">
           <button
